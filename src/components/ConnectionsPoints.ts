@@ -4,10 +4,12 @@ import { ActionManager } from "@babylonjs/core/Actions/actionManager";
 import { ExecuteCodeAction } from "@babylonjs/core/Actions/directActions";
 import { IConnectionsPointsConfig } from "../types";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
+import { Color3 } from "@babylonjs/core/Maths/math.color";
 import { Matrix } from "@babylonjs/core/Maths/math.vector";
 import type { MainScene } from "../scenes/MainScene";
 import { Nullable } from "@babylonjs/core/types";
 import { Observable } from "@babylonjs/core/Misc/observable";
+import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
 
 export class ConnectionPoint {
   id: number;
@@ -18,7 +20,9 @@ export class ConnectionPoint {
   currentWire: Mesh;
   connectionPoint: Nullable<ConnectionPoint>;
   draggable: boolean;
+  wireName: string;
   wires: Mesh[];
+  OnPickDownTriggerStartPointObservable: Observable<null>;
   OnPickUpTriggerWireObservable: Observable<null>;
 
   constructor(config: IConnectionsPointsConfig, scene: MainScene) {
@@ -28,13 +32,17 @@ export class ConnectionPoint {
     this.draggable = false;
     this.connectionPoint = null;
     this.OnPickUpTriggerWireObservable = new Observable();
+    this.OnPickDownTriggerStartPointObservable = new Observable();
+    this.wireName = "";
+    this.wires = [];
 
-    this.wirePointMesh = MeshBuilder.CreateSphere(`wirePointMesh_${this.id}`, {diameter: 1, segments: 16}, scene);
+    this.wirePointMesh = MeshBuilder.CreateSphere(`wirePointMesh_${this.id}`, { diameter: 0.25, segments: 8 }, scene);
+    this.wirePointMesh.visibility = 0.2;
     this.wirePointMesh.position = this.position;
     this.wirePointMesh.isPickable = true;
     this.wirePointMesh.actionManager = new ActionManager(scene);
 
-    this.startPointMesh = MeshBuilder.CreateSphere(`startPointMesh_${this.id}`, {diameter: 2, segments: 16}, scene);
+    this.startPointMesh = MeshBuilder.CreateSphere(`startPointMesh_${this.id}`, { diameter: 0.5, segments: 8 }, scene);
     this.startPointMesh.position = this.position;
     this.startPointMesh.visibility = 0.1;
     this.startPointMesh.isPickable = true;
@@ -44,53 +52,61 @@ export class ConnectionPoint {
   }
 
   _createAction() {
-    this.wirePointMesh.actionManager?.registerAction(new ExecuteCodeAction(ActionManager.OnPointerOverTrigger, () => {
-      // console.log(1);
-    }));
-    this.wirePointMesh.actionManager?.registerAction(new ExecuteCodeAction(ActionManager.OnPointerOutTrigger, () => {
-      // console.log(2);
-    }));
+    this.wirePointMesh.actionManager?.registerAction(
+      new ExecuteCodeAction(ActionManager.OnPointerOverTrigger, () => {
+        // console.log(1);
+      }),
+    );
+    this.wirePointMesh.actionManager?.registerAction(
+      new ExecuteCodeAction(ActionManager.OnPointerOutTrigger, () => {
+        // console.log(2);
+      }),
+    );
 
-    this.wirePointMesh.actionManager?.registerAction(new ExecuteCodeAction(ActionManager.OnPickDownTrigger, () => {
-      this._draggableSetting(true);
-      this._onWireMove();
-    }));
-    this.wirePointMesh.actionManager?.registerAction(new ExecuteCodeAction(ActionManager.OnPickUpTrigger, () => {
-      this._draggableSetting(false);
-      this.startPointMesh.isPickable = true;
-      if (this.connectionPoint !== null) {
-        this.wirePointMesh.position = this.connectionPoint.startPointMesh.getAbsolutePosition();
-        this.OnPickUpTriggerWireObservable.notifyObservers(null);
-        this.connectionPoint = null;
-        this.wirePointMesh.isPickable = false;
-        this._updateWire([
-          this.startPointMesh.getAbsolutePosition(),
-          this.wirePointMesh.position,
-        ]);
-      }
-    }));
+    this.wirePointMesh.actionManager?.registerAction(
+      new ExecuteCodeAction(ActionManager.OnPickDownTrigger, () => {
+        this._draggableSetting(true);
+        this._onWireMove();
+      }),
+    );
+    this.wirePointMesh.actionManager?.registerAction(
+      new ExecuteCodeAction(ActionManager.OnPickUpTrigger, () => {
+        this._draggableSetting(false);
+        this.startPointMesh.isPickable = true;
+        if (this.connectionPoint !== null) {
+          this.wirePointMesh.position = this.connectionPoint.startPointMesh.getAbsolutePosition();
+          this.OnPickUpTriggerWireObservable.notifyObservers(null);
+          this.connectionPoint = null;
+          this.wirePointMesh.isPickable = false;
+          this._updateWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
+          (this.currentWire?.material as StandardMaterial).diffuseColor = new Color3(0, 1, 0);
+        } else {
+          this.wirePointMesh.position = this.startPointMesh.getAbsolutePosition();
+          this.currentWire.dispose();
+          this.wires.splice(this.wires.length - 1, 1);
+        }
+      }),
+    );
 
-    this.startPointMesh.actionManager?.registerAction(new ExecuteCodeAction(ActionManager.OnPickDownTrigger, () => {
-      this.startPointMesh.isPickable = false;
-      this.wirePointMesh.isPickable = true;
-      this._draggableSetting(true);
-      this._onWireMove();
-      this.wirePointMesh.position = this.startPointMesh.getAbsolutePosition();
-      const path = [
-        this.startPointMesh.getAbsolutePosition(),
-        this.wirePointMesh.position,
-      ]
-      if (this.currentWire === undefined) {
-        this.currentWire = this._createWire(path);
+    this.startPointMesh.actionManager?.registerAction(
+      new ExecuteCodeAction(ActionManager.OnPickDownTrigger, () => {
+        this.OnPickDownTriggerStartPointObservable.notifyObservers(null);
+        this.startPointMesh.isPickable = false;
+        this.wirePointMesh.isPickable = true;
+        this._draggableSetting(true);
+        this._onWireMove();
+        this.wirePointMesh.position = this.startPointMesh.getAbsolutePosition();
+        this.currentWire = this._createWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
         this.currentWire.isPickable = false;
-      } else {
-        this._updateWire(path);
-      }
-    }));
-    this.startPointMesh.actionManager?.registerAction(new ExecuteCodeAction(ActionManager.OnPickUpTrigger, () => {
-      this.startPointMesh.isPickable = true;
-      this._draggableSetting(false);
-    }));
+        this.wires.push(this.currentWire);
+      }),
+    );
+    this.startPointMesh.actionManager?.registerAction(
+      new ExecuteCodeAction(ActionManager.OnPickUpTrigger, () => {
+        this.startPointMesh.isPickable = true;
+        this._draggableSetting(false);
+      }),
+    );
   }
 
   _draggableSetting(value: boolean) {
@@ -103,15 +119,24 @@ export class ConnectionPoint {
   }
 
   _createWire(path: Vector3[]) {
-    return MeshBuilder.CreateTube("wire", {
-      path,
-      radius: 0.1,
-      updatable: true
-    }, this.scene);
+    const wireMaterial = new StandardMaterial("wireMaterial", this.scene);
+    wireMaterial.diffuseColor = new Color3(1, 0, 0);
+    const wire = MeshBuilder.CreateTube(
+      "wire",
+      {
+        path,
+        radius: 0.1,
+        updatable: true,
+      },
+      this.scene,
+    );
+    wire.material = wireMaterial;
+
+    return wire;
   }
 
   _updateWire(path: Vector3[]) {
-    this.currentWire = MeshBuilder.CreateTube("tube", {path, instance: this.currentWire});
+    this.currentWire = MeshBuilder.CreateTube("tube", { path, instance: this.currentWire });
   }
 
   _onWireMove() {
@@ -122,16 +147,13 @@ export class ConnectionPoint {
         const hit = this.scene.pickWithRay(ray);
         const pickedPoint = hit?.pickedPoint;
         this.wirePointMesh.position = pickedPoint || Vector3.Zero();
-        this._updateWire([
-          this.startPointMesh.getAbsolutePosition(),
-          this.wirePointMesh.position,
-        ])
+        this._updateWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
         this.wirePointMesh.isPickable = true;
       }
-    }
+    };
   }
 
-  setIntersectedConnectionPoint(connectionPoint: ConnectionPoint) {
+  setIntersectedConnectionPoint(connectionPoint: Nullable<ConnectionPoint>) {
     this.connectionPoint = connectionPoint;
   }
 }

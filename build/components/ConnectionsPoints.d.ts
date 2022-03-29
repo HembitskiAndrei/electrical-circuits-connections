@@ -13,7 +13,9 @@ export declare class ConnectionPoint {
     currentWire: Mesh;
     connectionPoint: Nullable<ConnectionPoint>;
     draggable: boolean;
+    wireName: string;
     wires: Mesh[];
+    OnPickDownTriggerStartPointObservable: Observable<null>;
     OnPickUpTriggerWireObservable: Observable<null>;
     constructor(config: IConnectionsPointsConfig, scene: MainScene);
     _createAction(): void;
@@ -21,5 +23,5 @@ export declare class ConnectionPoint {
     _createWire(path: Vector3[]): Mesh;
     _updateWire(path: Vector3[]): void;
     _onWireMove(): void;
-    setIntersectedConnectionPoint(connectionPoint: ConnectionPoint): void;
+    setIntersectedConnectionPoint(connectionPoint: Nullable<ConnectionPoint>): void;
 }
