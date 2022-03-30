@@ -10,6 +10,7 @@ import type { MainScene } from "../scenes/MainScene";
 import { Nullable } from "@babylonjs/core/types";
 import { Observable } from "@babylonjs/core/Misc/observable";
 import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { curveWay } from "../utils/сurveWay";
 
 export class ConnectionPoint {
   id: number;
@@ -21,9 +22,16 @@ export class ConnectionPoint {
   connectionPoint: Nullable<ConnectionPoint>;
   draggable: boolean;
   wireName: string;
-  wires: Mesh[];
+  wires: {
+    [key: string]: Mesh;
+  };
+  isActive: boolean;
   OnPickDownTriggerStartPointObservable: Observable<null>;
-  OnPickUpTriggerWireObservable: Observable<null>;
+  OnPickUpTriggerWirePointObservable: Observable<null>;
+  OnPointerOverTriggerWireObservable: Observable<Mesh>;
+  OnPointerOutTriggerWireObservable: Observable<Mesh>;
+  OnPickDownTriggerWireObservable: Observable<string>;
+  private deltaVector: Vector3[];
 
   constructor(config: IConnectionsPointsConfig, scene: MainScene) {
     this.id = config.id;
@@ -31,13 +39,19 @@ export class ConnectionPoint {
     this.scene = scene;
     this.draggable = false;
     this.connectionPoint = null;
-    this.OnPickUpTriggerWireObservable = new Observable();
+    this.OnPickUpTriggerWirePointObservable = new Observable();
     this.OnPickDownTriggerStartPointObservable = new Observable();
+    this.OnPointerOverTriggerWireObservable = new Observable();
+    this.OnPointerOutTriggerWireObservable = new Observable();
+    this.OnPickDownTriggerWireObservable = new Observable();
     this.wireName = "";
-    this.wires = [];
+    this.wires = {};
+    this.isActive = true;
+
+    this.deltaVector = [];
 
     this.wirePointMesh = MeshBuilder.CreateSphere(`wirePointMesh_${this.id}`, { diameter: 0.25, segments: 8 }, scene);
-    this.wirePointMesh.visibility = 0.2;
+    this.wirePointMesh.visibility = 0;
     this.wirePointMesh.position = this.position;
     this.wirePointMesh.isPickable = true;
     this.wirePointMesh.actionManager = new ActionManager(scene);
@@ -65,46 +79,54 @@ export class ConnectionPoint {
 
     this.wirePointMesh.actionManager?.registerAction(
       new ExecuteCodeAction(ActionManager.OnPickDownTrigger, () => {
-        this._draggableSetting(true);
-        this._onWireMove();
+        if (this.isActive) {
+          this._draggableSetting(true);
+          this._onWireMove();
+        }
       }),
     );
     this.wirePointMesh.actionManager?.registerAction(
       new ExecuteCodeAction(ActionManager.OnPickUpTrigger, () => {
-        this._draggableSetting(false);
-        this.startPointMesh.isPickable = true;
-        if (this.connectionPoint !== null) {
-          this.wirePointMesh.position = this.connectionPoint.startPointMesh.getAbsolutePosition();
-          this.OnPickUpTriggerWireObservable.notifyObservers(null);
-          this.connectionPoint = null;
-          this.wirePointMesh.isPickable = false;
-          this._updateWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
-          (this.currentWire?.material as StandardMaterial).diffuseColor = new Color3(0, 1, 0);
-        } else {
-          this.wirePointMesh.position = this.startPointMesh.getAbsolutePosition();
-          this.currentWire.dispose();
-          this.wires.splice(this.wires.length - 1, 1);
+        if (this.isActive) {
+          this._draggableSetting(false);
+          this.startPointMesh.isPickable = true;
+          if (this.connectionPoint !== null) {
+            this.wirePointMesh.position = this.connectionPoint.startPointMesh.getAbsolutePosition();
+            this.OnPickUpTriggerWirePointObservable.notifyObservers(null);
+            this.connectionPoint = null;
+            this.wirePointMesh.isPickable = false;
+            this._updateWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
+            this.currentWire.name = this.wireName;
+            (this.currentWire?.material as StandardMaterial).diffuseColor = new Color3(0, 1, 0);
+            this.wires[`${this.currentWire.name}`] = this.currentWire;
+          } else {
+            this.wirePointMesh.position = this.startPointMesh.getAbsolutePosition();
+            this.currentWire.dispose();
+          }
         }
       }),
     );
 
     this.startPointMesh.actionManager?.registerAction(
       new ExecuteCodeAction(ActionManager.OnPickDownTrigger, () => {
-        this.OnPickDownTriggerStartPointObservable.notifyObservers(null);
-        this.startPointMesh.isPickable = false;
-        this.wirePointMesh.isPickable = true;
-        this._draggableSetting(true);
-        this._onWireMove();
-        this.wirePointMesh.position = this.startPointMesh.getAbsolutePosition();
-        this.currentWire = this._createWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
-        this.currentWire.isPickable = false;
-        this.wires.push(this.currentWire);
+        if (this.isActive) {
+          this.OnPickDownTriggerStartPointObservable.notifyObservers(null);
+          this.startPointMesh.isPickable = false;
+          this.wirePointMesh.isPickable = true;
+          this._draggableSetting(true);
+          this._onWireMove();
+          this.wirePointMesh.position = this.startPointMesh.getAbsolutePosition();
+          this.currentWire = this._createWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
+          this.currentWire.isPickable = false;
+        }
       }),
     );
     this.startPointMesh.actionManager?.registerAction(
       new ExecuteCodeAction(ActionManager.OnPickUpTrigger, () => {
-        this.startPointMesh.isPickable = true;
-        this._draggableSetting(false);
+        if (this.isActive) {
+          this.startPointMesh.isPickable = true;
+          this._draggableSetting(false);
+        }
       }),
     );
   }
@@ -119,24 +141,37 @@ export class ConnectionPoint {
   }
 
   _createWire(path: Vector3[]) {
+    this.deltaVector = Array.from({ length: 4 }).map(() => {
+      return new Vector3(
+        (Math.random() - Math.random()) * 0.5,
+        Math.random() - Math.random(),
+        (Math.random() - Math.random()) * 0.5,
+      );
+    });
     const wireMaterial = new StandardMaterial("wireMaterial", this.scene);
     wireMaterial.diffuseColor = new Color3(1, 0, 0);
     const wire = MeshBuilder.CreateTube(
       "wire",
       {
-        path,
-        radius: 0.1,
+        path: curveWay(path, this.deltaVector),
+        radius: 0.05,
+        arc: 0.15,
+        cap: Mesh.CAP_ALL,
         updatable: true,
       },
       this.scene,
     );
     wire.material = wireMaterial;
+    wire.actionManager = new ActionManager(this.scene);
 
     return wire;
   }
 
   _updateWire(path: Vector3[]) {
-    this.currentWire = MeshBuilder.CreateTube("tube", { path, instance: this.currentWire });
+    this.currentWire = MeshBuilder.CreateTube("tube", {
+      path: curveWay(path, this.deltaVector),
+      instance: this.currentWire,
+    });
   }
 
   _onWireMove() {
