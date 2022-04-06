@@ -6,6 +6,7 @@ import { Nullable } from "@babylonjs/core/types";
 import { Observable } from "@babylonjs/core/Misc/observable";
 export declare class ConnectionPoint {
     id: number;
+    type: string;
     position: Vector3;
     scene: MainScene;
     startPointMesh: Mesh;
@@ -14,6 +15,7 @@ export declare class ConnectionPoint {
     connectionPoint: Nullable<ConnectionPoint>;
     draggable: boolean;
     wireName: string;
+    wireId: string;
     wires: {
         [key: string]: Mesh;
     };
@@ -22,7 +24,10 @@ export declare class ConnectionPoint {
     OnPickUpTriggerWirePointObservable: Observable<null>;
     OnPointerOverTriggerWireObservable: Observable<Mesh>;
     OnPointerOutTriggerWireObservable: Observable<Mesh>;
-    OnPickDownTriggerWireObservable: Observable<string>;
+    OnPickDownTriggerWireObservable: Observable<{
+        wireName: string;
+        wireId: string;
+    }>;
     private deltaVector;
     constructor(config: IConnectionsPointsConfig, scene: MainScene);
     _createAction(): void;

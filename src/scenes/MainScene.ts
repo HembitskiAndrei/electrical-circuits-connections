@@ -14,10 +14,18 @@ import { createEnvironment } from "../utils/createEnvironment";
 import { ConnectionPoint } from "../components/ConnectionsPoints";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { createIntersectionEnterAction, createIntersectionExitAction } from "../utils/createIntersectionAction";
-import { SERIES_CONNECTION, RIGHT_SERIES_CONNECTION_ORDER, BUTTON_CONFIG } from "../utils/constants";
+import {
+  SERIES_CONNECTION,
+  // COMBINED_CONNECTION,
+  // RIGHT_SERIES_CONNECTION_ORDER,
+  RIGHT_PARALLEL_CONNECTION_ORDER,
+  // RIGHT_COMBINED_CONNECTION_ORDER,
+  BUTTON_CONFIG,
+} from "../utils/constants";
 import { createCheckingButton, createCuttingButton } from "../utils/createCheckingButton";
 import { createNumberWiresInfo } from "../utils/createNumberWiresInfo";
 import { activateConnectionPoints } from "../utils/activateConnectionPoints";
+import { getCheckingMapKey } from "../utils/getCheckingMapKey";
 
 export class MainScene extends Scene {
   engine: Engine;
@@ -43,6 +51,12 @@ export class MainScene extends Scene {
       blurVerticalSize: 0.5,
     });
 
+    const rightConnectionOrder = RIGHT_PARALLEL_CONNECTION_ORDER;
+
+    const connectionMap: Set<string> = new Set();
+    const checkingMap: Set<string> = new Set();
+    const connectorMap: Set<string> = new Set();
+
     const ground = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, this);
     ground.visibility = 0;
     ground.isPickable = true;
@@ -50,20 +64,23 @@ export class MainScene extends Scene {
     const checkingButton = createCheckingButton("On", "-50px", "100px", this.advancedTexture);
     checkingButton.isVisible = false;
     checkingButton.onPointerUpObservable.add(() => {
-      let numberCorrectWires = 0;
-      RIGHT_SERIES_CONNECTION_ORDER.forEach(wire => {
-        if (connectionMap.has(wire)) {
-          numberCorrectWires += 1;
-        }
+      let numberCorrectWires: number[] = [];
+      rightConnectionOrder.forEach(order => {
+        numberCorrectWires.push(0);
+        order.forEach(wire => {
+          if (checkingMap.has(wire) && connectorMap.size === SERIES_CONNECTION.length) {
+            numberCorrectWires[numberCorrectWires.length - 1] += 1;
+          }
+        });
       });
-      if (RIGHT_SERIES_CONNECTION_ORDER.length === numberCorrectWires) {
-        console.log("Right!");
+      if (numberCorrectWires.indexOf(rightConnectionOrder[0].length) !== -1) {
+        console.log("Right!", connectionMap /*, checkingMap, connectorMap*/);
       } else {
-        console.log("Wrong!");
+        console.log("Wrong!", connectionMap /*, checkingMap, connectorMap*/);
       }
     });
 
-    let currentNumberConnection = RIGHT_SERIES_CONNECTION_ORDER.length;
+    let currentNumberConnection = rightConnectionOrder[0].length;
     const numberWiresInfo = createNumberWiresInfo(this.advancedTexture);
     numberWiresInfo.text = `${currentNumberConnection}`;
 
@@ -108,7 +125,7 @@ export class MainScene extends Scene {
     cuttingButton.isVisible = false;
 
     this.camera = new ArcRotateCamera("Camera", 0, Math.PI / 2, 10, new Vector3(0, 5, 5), this);
-    this.camera.position = new Vector3(0, 3, 5);
+    this.camera.position = new Vector3(0, 6, 10);
     this.camera.minZ = 0.0;
     this.camera.maxZ = 100;
     this.camera.lowerRadiusLimit = 10;
@@ -127,15 +144,14 @@ export class MainScene extends Scene {
       pepperMesh.position.x += 10;
     };
 
-    const connectionMap: Set<string> = new Set();
-
     const connectionPoints: ConnectionPoint[] = [];
 
-    SERIES_CONNECTION.forEach((connectorPosition, index) => {
+    SERIES_CONNECTION.forEach((connectorConfig, index) => {
       const connector = new ConnectionPoint(
         {
           id: index,
-          position: connectorPosition,
+          type: connectorConfig.type,
+          position: connectorConfig.position,
         },
         this,
       );
@@ -145,16 +161,25 @@ export class MainScene extends Scene {
     });
 
     connectionPoints.forEach(point => {
-      point.OnPickDownTriggerWireObservable.add(wireName => {
-        if (currentNumberConnection < RIGHT_SERIES_CONNECTION_ORDER.length) {
+      point.OnPickDownTriggerWireObservable.add(wire => {
+        console.log("OnPickDownTriggerWireObservable", currentNumberConnection);
+        if (currentNumberConnection < rightConnectionOrder[0].length) {
           currentNumberConnection += 1;
           numberWiresInfo.text = `${currentNumberConnection}`;
-          connectionMap.delete(wireName);
+          console.log("111", connectionMap, wire.wireName);
+          connectionMap.delete(wire.wireName);
+          checkingMap.delete(getCheckingMapKey(wire.wireId));
+          // connectorMap.delete(point.wireId);
+          console.log("222", connectionMap, wire.wireName);
         }
       });
       point.OnPickUpTriggerWirePointObservable.add(() => {
         if (point.connectionPoint !== null && point.isActive) {
           connectionMap.add(point.wireName);
+          checkingMap.add(getCheckingMapKey(point.wireId));
+          point.wireId.split("-").forEach(con => {
+            connectorMap.add(con);
+          });
           currentNumberConnection -= 1;
           numberWiresInfo.text = `${currentNumberConnection}`;
           if (currentNumberConnection === 0) {
@@ -165,8 +190,12 @@ export class MainScene extends Scene {
       connectionPoints.forEach(pointSecond => {
         if (point.id !== pointSecond.id) {
           createIntersectionEnterAction(point.wirePointMesh, pointSecond.startPointMesh, () => {
-            if (!connectionMap.has(`${Math.min(pointSecond.id, point.id)}-${Math.max(pointSecond.id, point.id)}`)) {
+            if (
+              !connectionMap.has(`${Math.min(pointSecond.id, point.id)}-${Math.max(pointSecond.id, point.id)}`) &&
+              point.type.split("_")[0] !== pointSecond.type.split("_")[0]
+            ) {
               point.wireName = `${Math.min(pointSecond.id, point.id)}-${Math.max(pointSecond.id, point.id)}`;
+              point.wireId = [point.type, pointSecond.type].sort().join("-");
               point.setIntersectedConnectionPoint(pointSecond);
             }
           });

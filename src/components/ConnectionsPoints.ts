@@ -14,6 +14,7 @@ import { curveWay } from "../utils/сurveWay";
 
 export class ConnectionPoint {
   id: number;
+  type: string;
   position: Vector3;
   scene: MainScene;
   startPointMesh: Mesh;
@@ -22,6 +23,7 @@ export class ConnectionPoint {
   connectionPoint: Nullable<ConnectionPoint>;
   draggable: boolean;
   wireName: string;
+  wireId: string;
   wires: {
     [key: string]: Mesh;
   };
@@ -30,11 +32,15 @@ export class ConnectionPoint {
   OnPickUpTriggerWirePointObservable: Observable<null>;
   OnPointerOverTriggerWireObservable: Observable<Mesh>;
   OnPointerOutTriggerWireObservable: Observable<Mesh>;
-  OnPickDownTriggerWireObservable: Observable<string>;
+  OnPickDownTriggerWireObservable: Observable<{
+    wireName: string;
+    wireId: string;
+  }>;
   private deltaVector: Vector3[];
 
   constructor(config: IConnectionsPointsConfig, scene: MainScene) {
     this.id = config.id;
+    this.type = config.type;
     this.position = config.position;
     this.scene = scene;
     this.draggable = false;
@@ -45,6 +51,7 @@ export class ConnectionPoint {
     this.OnPointerOutTriggerWireObservable = new Observable();
     this.OnPickDownTriggerWireObservable = new Observable();
     this.wireName = "";
+    this.wireId = "";
     this.wires = {};
     this.isActive = true;
 
@@ -97,6 +104,7 @@ export class ConnectionPoint {
             this.wirePointMesh.isPickable = false;
             this._updateWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
             this.currentWire.name = this.wireName;
+            this.currentWire.id = this.wireId;
             (this.currentWire?.material as StandardMaterial).diffuseColor = new Color3(0, 1, 0);
             this.wires[`${this.currentWire.name}`] = this.currentWire;
           } else {
