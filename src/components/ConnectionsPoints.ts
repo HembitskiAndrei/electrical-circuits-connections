@@ -9,7 +9,7 @@ import { Matrix } from "@babylonjs/core/Maths/math.vector";
 import type { MainScene } from "../scenes/MainScene";
 import { Nullable } from "@babylonjs/core/types";
 import { Observable } from "@babylonjs/core/Misc/observable";
-import { StandardMaterial } from "@babylonjs/core/Materials/standardMaterial";
+import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
 import { curveWay } from "../utils/сurveWay";
 
 export class ConnectionPoint {
@@ -57,33 +57,28 @@ export class ConnectionPoint {
 
     this.deltaVector = [];
 
-    this.wirePointMesh = MeshBuilder.CreateSphere(`wirePointMesh_${this.id}`, { diameter: 0.25, segments: 8 }, scene);
+    this.wirePointMesh = MeshBuilder.CreateSphere(`wirePointMesh_${this.id}`, { diameter: 0.15, segments: 8 }, scene);
     this.wirePointMesh.visibility = 0;
     this.wirePointMesh.position = this.position;
     this.wirePointMesh.isPickable = true;
     this.wirePointMesh.actionManager = new ActionManager(scene);
 
-    this.startPointMesh = MeshBuilder.CreateSphere(`startPointMesh_${this.id}`, { diameter: 0.5, segments: 8 }, scene);
+    const startPointMeshMaterial = new PBRMaterial("startPointMeshMaterial", this.scene);
+    startPointMeshMaterial.metallic = 0.75;
+    startPointMeshMaterial.roughness = 0.75;
+    startPointMeshMaterial.albedoColor = new Color3(2, 0.75, 0.25);
+
+    this.startPointMesh = MeshBuilder.CreateSphere(`startPointMesh_${this.id}`, { diameter: 0.25, segments: 8 }, scene);
     this.startPointMesh.position = this.position;
-    this.startPointMesh.visibility = 0.1;
+    this.startPointMesh.visibility = 1;
     this.startPointMesh.isPickable = true;
     this.startPointMesh.actionManager = new ActionManager(scene);
+    this.startPointMesh.material = startPointMeshMaterial;
 
     this._createAction();
   }
 
   _createAction() {
-    this.wirePointMesh.actionManager?.registerAction(
-      new ExecuteCodeAction(ActionManager.OnPointerOverTrigger, () => {
-        // console.log(1);
-      }),
-    );
-    this.wirePointMesh.actionManager?.registerAction(
-      new ExecuteCodeAction(ActionManager.OnPointerOutTrigger, () => {
-        // console.log(2);
-      }),
-    );
-
     this.wirePointMesh.actionManager?.registerAction(
       new ExecuteCodeAction(ActionManager.OnPickDownTrigger, () => {
         if (this.isActive) {
@@ -105,7 +100,7 @@ export class ConnectionPoint {
             this._updateWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
             this.currentWire.name = this.wireName;
             this.currentWire.id = this.wireId;
-            (this.currentWire?.material as StandardMaterial).diffuseColor = new Color3(0, 1, 0);
+            (this.currentWire?.material as PBRMaterial).albedoColor = new Color3(0, 1, 0);
             this.wires[`${this.currentWire.name}`] = this.currentWire;
           } else {
             this.wirePointMesh.position = this.startPointMesh.getAbsolutePosition();
@@ -156,8 +151,10 @@ export class ConnectionPoint {
         (Math.random() - Math.random()) * 0.5,
       );
     });
-    const wireMaterial = new StandardMaterial("wireMaterial", this.scene);
-    wireMaterial.diffuseColor = new Color3(1, 0, 0);
+    const wireMaterial = new PBRMaterial("wireMaterial", this.scene);
+    wireMaterial.metallic = 1;
+    wireMaterial.roughness = 0.75;
+    wireMaterial.albedoColor = new Color3(1, 0, 0);
     const wire = MeshBuilder.CreateTube(
       "wire",
       {

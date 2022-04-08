@@ -11,27 +11,27 @@ export const SERIES_CONNECTION = [
   },
   {
     type: "k1_0",
-    position: new Vector3(-4, 0, 1),
+    position: new Vector3(-4, 0, 1.5),
   },
   {
     type: "k1_1",
-    position: new Vector3(-4, 0, 0),
+    position: new Vector3(-4, 0, -0.5),
   },
   {
     type: "l1_0",
-    position: new Vector3(-2, 0, -2),
+    position: new Vector3(-3.25, 0, -2),
   },
   {
     type: "l1_1",
-    position: new Vector3(-1, 0, -2),
+    position: new Vector3(-1.75, 0, -2),
   },
   {
     type: "l2_0",
-    position: new Vector3(1, 0, -2),
+    position: new Vector3(0.75, 0, -2),
   },
   {
     type: "l2_1",
-    position: new Vector3(2, 0, -2),
+    position: new Vector3(2.25, 0, -2),
   },
   {
     type: "b1_1",

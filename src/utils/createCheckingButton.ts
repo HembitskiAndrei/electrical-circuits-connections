@@ -58,12 +58,12 @@ export const createCuttingButton = (
   advancedTexture: AdvancedDynamicTexture,
 ) => {
   const rectBack = new Rectangle();
-  rectBack.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
-  rectBack.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+  rectBack.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+  rectBack.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
   rectBack.top = top;
   rectBack.left = left;
-  rectBack.width = "150px";
-  rectBack.height = "150px";
+  rectBack.width = "190px";
+  rectBack.height = "190px";
   rectBack.cornerRadius = 10;
   rectBack.color = BUTTON_CONFIG.defaultColor.color;
   rectBack.thickness = 4;
@@ -89,8 +89,8 @@ export const createCuttingButton = (
   advancedTexture.addControl(rectBack);
 
   const image = new Image("wireCutters", "./assets/textures/wireCutters.png");
-  image.width = "128px";
-  image.height = "128px";
+  image.width = "168px";
+  image.height = "168px";
   rectBack.addControl(image);
 
   const label = new TextBlock();

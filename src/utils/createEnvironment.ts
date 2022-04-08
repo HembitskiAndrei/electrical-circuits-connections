@@ -5,9 +5,6 @@ export const createEnvironment = (scene: MainScene) => {
   environmentTask.onSuccess = task => {
     scene.environmentTexture = task.texture;
     scene.createDefaultLight();
-    scene.createDefaultEnvironment({
-      createSkybox: false,
-      createGround: false,
-    });
+    scene.createDefaultSkybox(task.texture, true, 100, 0.15);
   };
 };
