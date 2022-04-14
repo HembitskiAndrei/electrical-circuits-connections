@@ -1,8 +1,10 @@
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 
-// battery => 0,
-// key     => 1,
-// lamp    => 2,
+export const DEFAULT_COLOR_BORDER = "#878787";
+
+export const HOVER_COLOR_BORDER = "#FFFFFF";
+
+export const BACK_TITLE_COLOR = "#2F6EFF";
 
 export const SERIES_CONNECTION = [
   {
@@ -33,6 +35,14 @@ export const SERIES_CONNECTION = [
     type: "l2_1",
     position: new Vector3(2.25, 0, -2),
   },
+  // {
+  //   type: "l3_0",
+  //   position: new Vector3(4, 0, 1.25),
+  // },
+  // {
+  //   type: "l3_1",
+  //   position: new Vector3(4, 0, -0.25),
+  // },
   {
     type: "b1_1",
     position: new Vector3(1, 0, 3),

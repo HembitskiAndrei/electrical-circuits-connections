@@ -15,6 +15,7 @@ import { curveWay } from "../utils/сurveWay";
 export class ConnectionPoint {
   id: number;
   type: string;
+  sign: string;
   position: Vector3;
   scene: MainScene;
   startPointMesh: Mesh;
@@ -41,6 +42,7 @@ export class ConnectionPoint {
   constructor(config: IConnectionsPointsConfig, scene: MainScene) {
     this.id = config.id;
     this.type = config.type;
+    this.sign = "";
     this.position = config.position;
     this.scene = scene;
     this.draggable = false;

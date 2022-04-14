@@ -4,7 +4,6 @@ import { Scene, SceneOptions } from "@babylonjs/core/scene";
 import "@babylonjs/core/Layers/effectLayerSceneComponent";
 import { Tools } from "@babylonjs/core/Misc/tools";
 import { Axis, Space } from "@babylonjs/core/Maths/math.axis";
-import { Nullable } from "@babylonjs/core/types";
 import { HighlightLayer } from "@babylonjs/core/Layers/highlightLayer";
 import { GlowLayer } from "@babylonjs/core/Layers/glowLayer";
 import { AssetsManager } from "@babylonjs/core/Misc/assetsManager";
@@ -13,20 +12,26 @@ import { Mesh } from "@babylonjs/core/Meshes/mesh";
 import { Color3, Color4 } from "@babylonjs/core/Maths/math.color";
 import { Vector3 } from "@babylonjs/core/Maths/math.vector";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D/advancedDynamicTexture";
+import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
 import { createEnvironment } from "../utils/createEnvironment";
 import { ConnectionPoint } from "../components/ConnectionsPoints";
 import { MeshBuilder } from "@babylonjs/core/Meshes/meshBuilder";
 import { createIntersectionEnterAction, createIntersectionExitAction } from "../utils/createIntersectionAction";
-import { BUTTON_CONFIG, RIGHT_PARALLEL_CONNECTION_ORDER, SERIES_CONNECTION } from "../utils/constants";
-import { createCuttingButton } from "../utils/createCheckingButton";
+import {
+  BUTTON_CONFIG,
+  RIGHT_PARALLEL_CONNECTION_ORDER,
+  RIGHT_SERIES_CONNECTION_ORDER,
+  SERIES_CONNECTION,
+} from "../utils/constants";
+import { createCuttingButton, createContinueButton } from "../utils/createCheckingButton";
+import { createStartScreen } from "../utils/createStartScreen";
 import { createNumberWiresInfo } from "../utils/createNumberWiresInfo";
 import { activateConnectionPoints } from "../utils/activateConnectionPoints";
 import { getCheckingMapKey } from "../utils/getCheckingMapKey";
 import { keyActions } from "../utils/keyActions";
 import { keyAnimation } from "../utils/keyAnimation";
-import { TLampMaterials } from "../types";
 import { setLampsMaterials } from "../utils/setLampsMaterials";
-import { PBRMaterial } from "@babylonjs/core/Materials/PBR/pbrMaterial";
+import { TLampMaterials } from "../types";
 
 export class MainScene extends Scene {
   engine: Engine;
@@ -59,21 +64,50 @@ export class MainScene extends Scene {
     });
     glowLayer.intensity = 2;
 
-    const rightConnectionOrder = RIGHT_PARALLEL_CONNECTION_ORDER;
+    let rightConnectionOrder: string[][];
+    let currentNumberConnection = 0;
 
     const connectionMap: Set<string> = new Set();
     const checkingMap: Set<string> = new Set();
     const connectorMap: Map<string, number> = new Map();
-    let outConnectorBattery: Nullable<ConnectionPoint>;
-    let inConnectorKey: Nullable<ConnectionPoint>;
+    const devicesMap: Map<string, ConnectionPoint[]> = new Map();
+    const deviceSignMap: Map<string, string> = new Map();
 
     const ground = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, this);
     ground.visibility = 0;
     ground.isPickable = true;
 
-    let currentNumberConnection = rightConnectionOrder[0].length;
     const numberWiresInfo = createNumberWiresInfo(this.advancedTexture);
-    numberWiresInfo.text = `${currentNumberConnection}`;
+
+    const continueButton = createContinueButton("Continue", "490px", "-50px", this.advancedTexture);
+    continueButton.isVisible = false;
+    continueButton.onPointerDownObservable.add(() => {
+      currentNumberConnection = rightConnectionOrder[0].length;
+      numberWiresInfo.text = `${currentNumberConnection}`;
+      connectionMap.clear();
+      checkingMap.clear();
+      connectorMap.clear();
+      devicesMap.clear();
+
+      connectionPoints.forEach(point => {
+        Object.values(point.wires).forEach(wire => {
+          wire.isPickable = false;
+          wire.actionManager?.dispose();
+          delete point.wires[`${wire.name}`];
+          wire.dispose();
+        });
+
+        point.sign = "";
+        const typeWords = point.type.split("_");
+        if (devicesMap.has(typeWords[0])) {
+          devicesMap.set(typeWords[0], [...(devicesMap.get(typeWords[0]) as ConnectionPoint[]), point]);
+        } else {
+          devicesMap.set(typeWords[0], [point]);
+        }
+      });
+      (devicesMap.get("b1") as ConnectionPoint[])[0].sign = "+";
+      (devicesMap.get("b1") as ConnectionPoint[])[1].sign = "-";
+    });
 
     let isCuttingMode = false;
     const cuttingButton = createCuttingButton("", "270px", "-50px", this.advancedTexture);
@@ -115,6 +149,23 @@ export class MainScene extends Scene {
     });
     cuttingButton.isVisible = false;
 
+    const buttons = createStartScreen(this.advancedTexture);
+    buttons.serialButton.onPointerUpObservable.add(() => {
+      rightConnectionOrder = RIGHT_SERIES_CONNECTION_ORDER;
+      currentNumberConnection = rightConnectionOrder[0].length;
+      numberWiresInfo.text = `${currentNumberConnection}`;
+      ground.isPickable = true;
+      activateConnectionPoints(connectionPoints, true, false, true);
+    });
+
+    buttons.parallelButton.onPointerUpObservable.add(() => {
+      rightConnectionOrder = RIGHT_PARALLEL_CONNECTION_ORDER;
+      currentNumberConnection = rightConnectionOrder[0].length;
+      numberWiresInfo.text = `${currentNumberConnection}`;
+      ground.isPickable = true;
+      activateConnectionPoints(connectionPoints, true, false, true);
+    });
+
     this.camera = new ArcRotateCamera("Camera", 0, Math.PI / 2, 10, new Vector3(0, 5, 5), this);
     this.camera.position = new Vector3(0, 6, 10);
     this.camera.minZ = 0.0;
@@ -149,6 +200,15 @@ export class MainScene extends Scene {
       keyRoot.scaling.scaleInPlace(0.325);
       keyRoot.position = new Vector3(-4, -0.05, 0.522);
       const keyMesh = this.getMeshByName("key") as Mesh;
+
+      keyMesh.isPickable = false;
+      buttons.serialButton.onPointerUpObservable.add(() => {
+        keyMesh.isPickable = true;
+      });
+      buttons.parallelButton.onPointerUpObservable.add(() => {
+        keyMesh.isPickable = true;
+      });
+
       const switchOnAnimationGroup = keyAnimation(
         keyMesh,
         new Vector3(keyMesh.rotation.x - Tools.ToRadians(10), 0, 0),
@@ -161,6 +221,22 @@ export class MainScene extends Scene {
         new Vector3(keyMesh.rotation.x - Tools.ToRadians(10), 0, 0),
         1000,
       );
+      continueButton.onPointerDownObservable.add(() => {
+        if (turnOnOff) {
+          setLampsMaterials(false, lampsMaterials);
+          turnOnOff = false;
+          switchOffAnimationGroup.start(false);
+        }
+
+        keyMesh.isPickable = false;
+        ground.isPickable = false;
+        activateConnectionPoints(connectionPoints, false, false, false);
+
+        buttons.container.isVisible = true;
+        buttons.serialButton.isVisible = true;
+        buttons.parallelButton.isVisible = true;
+        continueButton.isVisible = false;
+      });
       cuttingButton.onPointerDownObservable.add(() => {
         if (turnOnOff) {
           setLampsMaterials(false, lampsMaterials);
@@ -194,14 +270,22 @@ export class MainScene extends Scene {
                   }
                 });
               });
-              if (numberCorrectWires.indexOf(rightConnectionOrder[0].length) !== -1) {
+
+              const l1Device = devicesMap.get("l1") as ConnectionPoint[];
+              const l2Device = devicesMap.get("l2") as ConnectionPoint[];
+              if (
+                numberCorrectWires.indexOf(rightConnectionOrder[0].length) !== -1 &&
+                l1Device[0].sign !== l1Device[1].sign &&
+                l2Device[0].sign !== l2Device[1].sign
+              ) {
                 setLampsMaterials(true, lampsMaterials);
-                console.log("Right!", connectionMap /*, checkingMap, connectorMap*/);
+                console.log("Right!", connectionMap, devicesMap);
                 turnOnOff = true;
+                continueButton.isVisible = true;
               } else {
                 setLampsMaterials(false, lampsMaterials);
                 switchOffAnimationGroup.start(false);
-                console.log("Wrong!", connectionMap /*, checkingMap, connectorMap*/);
+                console.log("Wrong!", connectionMap);
               }
             } else {
               setLampsMaterials(false, lampsMaterials);
@@ -215,11 +299,10 @@ export class MainScene extends Scene {
 
     const meshTaskLamp = this.assetsManager.addContainerTask("meshTaskLamp", "", "./assets/meshes/", "lamp.glb");
     meshTaskLamp.onSuccess = task => {
-      const positions = [new Vector3(-2.5, 0.15, -2), new Vector3(1.5, 0.15, -2), new Vector3(4, 0.15, 0.522)];
+      const positions = [new Vector3(-2.5, 0.15, -2), new Vector3(1.5, 0.15, -2) /*, new Vector3(4, 0.15, 0.522)*/];
 
       positions.forEach((position, index) => {
         const lampRoot = task.loadedContainer.instantiateModelsToScene(name => `${name}_${index}`, true).rootNodes[0];
-        console.log(lampRoot);
         lampRoot.rotate(Axis.Y, Math.PI / 2, Space.WORLD);
         lampRoot.scaling.scaleInPlace(0.265);
         lampRoot.position = position;
@@ -245,9 +328,7 @@ export class MainScene extends Scene {
         });
       });
 
-      // @ts-ignore
-      console.log(this.getMeshByName(`_root__${positions.length - 1}`));
-      (this.getMeshByName(`_root__${positions.length - 1}`) as Mesh)?.rotate(Axis.Y, -Math.PI / 2, Space.WORLD);
+      // (this.getMeshByName(`__root___${positions.length - 1}`) as Mesh)?.rotate(Axis.Y, -Math.PI / 2, Space.WORLD);
     };
 
     const connectionPoints: ConnectionPoint[] = [];
@@ -263,26 +344,45 @@ export class MainScene extends Scene {
       );
       this.highlight.addExcludedMesh(connector.startPointMesh);
       this.highlight.addExcludedMesh(connector.wirePointMesh);
+
+      const typeWords = connectorConfig.type.split("_");
+      if (devicesMap.has(typeWords[0])) {
+        devicesMap.set(typeWords[0], [...(devicesMap.get(typeWords[0]) as ConnectionPoint[]), connector]);
+      } else {
+        devicesMap.set(typeWords[0], [connector]);
+      }
       connectionPoints.push(connector);
     });
+
+    (devicesMap.get("b1") as ConnectionPoint[])[0].sign = "+";
+    (devicesMap.get("b1") as ConnectionPoint[])[1].sign = "-";
 
     connectionPoints.forEach(point => {
       point.OnPickDownTriggerWireObservable.add(wire => {
         if (currentNumberConnection < rightConnectionOrder[0].length) {
           currentNumberConnection += 1;
-          console.log(wire);
-          // if (point.type === outConnectorBattery.type || point.connectionPoint.type === outConnectorBattery.type) {
-          //   outConnectorBattery = null;
-          // }
-
-          // inConnectorKey = null;
-
           numberWiresInfo.text = `${currentNumberConnection}`;
           connectionMap.delete(wire.wireName);
           checkingMap.delete(getCheckingMapKey(wire.wireId));
           wire.wireId.split("-").forEach(con => {
             if (<number>connectorMap.get(con) <= 1) {
+              const subCon = con.split("_");
+              if (subCon[0].includes("l")) {
+                (devicesMap.get(subCon[0]) as ConnectionPoint[])[+subCon[1]].sign = "";
+              }
               connectorMap.delete(con);
+              if (subCon[0].includes("k")) {
+                let keyCount = 0;
+                connectorMap.forEach((value, key) => {
+                  if (key.includes("k")) {
+                    keyCount += 1;
+                  }
+                });
+                if (!keyCount) {
+                  (devicesMap.get(subCon[0]) as ConnectionPoint[])[0].sign = "";
+                  (devicesMap.get(subCon[0]) as ConnectionPoint[])[1].sign = "";
+                }
+              }
             } else {
               connectorMap.set(con, <number>connectorMap.get(con) - 1);
             }
@@ -291,22 +391,28 @@ export class MainScene extends Scene {
       });
       point.OnPickUpTriggerWirePointObservable.add(() => {
         if (point.connectionPoint !== null && point.isActive) {
+          deviceSignMap.set(point.connectionPoint.type.split("_")[0], point.sign);
+
+          const tmpTypeConnectionPoint = point.connectionPoint.type.split("_");
+          const tmpTypeConnector = point.type.split("_");
           if (
-            !outConnectorBattery &&
-            (point.type.includes("b1") || point.connectionPoint.type.includes("b1")) &&
-            !inConnectorKey &&
-            (point.type.includes("k1") || point.connectionPoint.type.includes("k1"))
+            (tmpTypeConnectionPoint[0].includes("k") && tmpTypeConnector[0].includes("b")) ||
+            (tmpTypeConnectionPoint[0].includes("b") && tmpTypeConnector[0].includes("k"))
           ) {
-            if (point.type.includes("b1")) {
-              outConnectorBattery = point;
-              inConnectorKey = point.connectionPoint;
-            } else {
-              inConnectorKey = point;
-              outConnectorBattery = point.connectionPoint;
-            }
-            // @ts-ignore
-            console.log(outConnectorBattery.type, inConnectorKey.type);
+            (devicesMap.get(tmpTypeConnectionPoint[0]) as ConnectionPoint[])[0].sign = point.sign;
+            (devicesMap.get(tmpTypeConnectionPoint[0]) as ConnectionPoint[])[1].sign = point.sign;
+          } else if (
+            tmpTypeConnectionPoint[0].includes("l") &&
+            (tmpTypeConnector[0].includes("k") || tmpTypeConnector[0].includes("b"))
+          ) {
+            point.connectionPoint.sign = point.sign;
+          } else if (
+            (tmpTypeConnectionPoint[0].includes("k") || tmpTypeConnectionPoint[0].includes("b")) &&
+            tmpTypeConnector[0].includes("l")
+          ) {
+            point.sign = point.connectionPoint.sign;
           }
+
           connectionMap.add(point.wireName);
           checkingMap.add(getCheckingMapKey(point.wireId));
           point.wireId.split("-").forEach(con => {
@@ -326,7 +432,6 @@ export class MainScene extends Scene {
       connectionPoints.forEach(pointSecond => {
         if (point.id !== pointSecond.id) {
           createIntersectionEnterAction(point.wirePointMesh, pointSecond.startPointMesh, () => {
-            console.log(connectionMap);
             if (
               !connectionMap.has(`${Math.min(pointSecond.id, point.id)}-${Math.max(pointSecond.id, point.id)}`) &&
               point.type.split("_")[0] !== pointSecond.type.split("_")[0]
@@ -346,7 +451,6 @@ export class MainScene extends Scene {
 
     this.assetsManager.onFinish = () => {
       this.executeWhenReady(() => {
-        // checkingButton.isVisible = true;
         cuttingButton.isVisible = true;
       });
     };

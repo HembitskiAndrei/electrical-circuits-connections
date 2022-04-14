@@ -5,15 +5,15 @@ import { Image } from "@babylonjs/gui/2D/controls/image";
 import { AdvancedDynamicTexture } from "@babylonjs/gui/2D/advancedDynamicTexture";
 import { BUTTON_CONFIG } from "./constants";
 
-export const createCheckingButton = (
+export const createContinueButton = (
   text: string,
   top: string,
   left: string,
   advancedTexture: AdvancedDynamicTexture,
 ) => {
   const rectBack = new Rectangle();
-  rectBack.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
-  rectBack.verticalAlignment = Control.VERTICAL_ALIGNMENT_BOTTOM;
+  rectBack.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
+  rectBack.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
   rectBack.top = top;
   rectBack.left = left;
   rectBack.width = "190px";

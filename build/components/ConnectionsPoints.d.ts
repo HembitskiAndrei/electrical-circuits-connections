@@ -7,6 +7,7 @@ import { Observable } from "@babylonjs/core/Misc/observable";
 export declare class ConnectionPoint {
     id: number;
     type: string;
+    sign: string;
     position: Vector3;
     scene: MainScene;
     startPointMesh: Mesh;

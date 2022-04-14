@@ -26,7 +26,7 @@ export const createNumberWiresInfo = (advancedTexture: AdvancedDynamicTexture) =
   rectBack.addControl(label);
 
   const counter = new TextBlock();
-  counter.text = "5";
+  counter.text = "0";
   counter.top = "30px";
   counter.color = BUTTON_CONFIG.textureColor;
   counter.fontSize = 48;

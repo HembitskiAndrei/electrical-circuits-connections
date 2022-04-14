@@ -45,6 +45,7 @@ export const activateConnectionPoints = (
   connectionPoints.forEach(point => {
     point.isActive = isActive;
     point.startPointMesh.isPickable = isActive;
+    point.wirePointMesh.isPickable = isActive;
     if (isSettingAction) {
       setWireActions(point, isWirePickable);
     }
