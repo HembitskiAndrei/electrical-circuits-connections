@@ -78,27 +78,27 @@ export const RIGHT_COMBINED_CONNECTION_ORDER = [
 export const BUTTON_CONFIG = {
   defaultColor: {
     background: "transparent",
-    color: "#102a31",
+    color: "#2d2d2d",
   },
   enterColor: {
     background: "transparent",
-    color: "#247c97",
+    color: "#ffffff",
   },
   outColor: {
     background: "transparent",
-    color: "#102a31",
+    color: "#2d2d2d",
   },
   downColor: {
     background: "transparent",
-    color: "#247c97",
+    color: "#ffffff",
   },
   upColor: {
     background: "transparent",
-    color: "#102a31",
+    color: "#2d2d2d",
   },
   pressedColor: {
     background: "transparent",
     color: "#ff0000",
   },
-  textureColor: "#123e4c",
+  textureColor: "#ffffff",
 };

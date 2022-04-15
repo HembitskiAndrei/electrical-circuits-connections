@@ -10,10 +10,13 @@ export const createContinueButton = (
   top: string,
   left: string,
   advancedTexture: AdvancedDynamicTexture,
+  horizontalAlignment?: number,
+  verticalAlignment?: number,
 ) => {
   const rectBack = new Rectangle();
-  rectBack.horizontalAlignment = Control.HORIZONTAL_ALIGNMENT_RIGHT;
-  rectBack.verticalAlignment = Control.VERTICAL_ALIGNMENT_TOP;
+  rectBack.horizontalAlignment =
+    horizontalAlignment === undefined ? Control.HORIZONTAL_ALIGNMENT_RIGHT : horizontalAlignment;
+  rectBack.verticalAlignment = verticalAlignment === undefined ? Control.VERTICAL_ALIGNMENT_BOTTOM : verticalAlignment;
   rectBack.top = top;
   rectBack.left = left;
   rectBack.width = "190px";
@@ -44,8 +47,10 @@ export const createContinueButton = (
 
   const label = new TextBlock();
   label.text = text;
+  label.outlineWidth = 3;
+  label.outlineColor = BUTTON_CONFIG.defaultColor.color;
   label.color = BUTTON_CONFIG.textureColor;
-  label.fontSize = 42;
+  label.fontSize = 38;
   rectBack.addControl(label);
 
   return rectBack;

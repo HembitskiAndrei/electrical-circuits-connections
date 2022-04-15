@@ -70,7 +70,7 @@ export class ConnectionPoint {
     startPointMeshMaterial.roughness = 0.75;
     startPointMeshMaterial.albedoColor = new Color3(2, 0.75, 0.25);
 
-    this.startPointMesh = MeshBuilder.CreateSphere(`startPointMesh_${this.id}`, { diameter: 0.25, segments: 8 }, scene);
+    this.startPointMesh = MeshBuilder.CreateSphere(`startPointMesh_${this.id}`, { diameter: 0.3, segments: 8 }, scene);
     this.startPointMesh.position = this.position;
     this.startPointMesh.visibility = 1;
     this.startPointMesh.isPickable = true;

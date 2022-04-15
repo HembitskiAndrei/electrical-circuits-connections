@@ -77,16 +77,16 @@ export const createStartScreen = (advancedTexture: AdvancedDynamicTexture) => {
   container.addControl(bonusInfoContainer);
 
   const text = new TextBlock();
-  text.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_LEFT;
+  text.textHorizontalAlignment = Control.HORIZONTAL_ALIGNMENT_CENTER;
   text.textVerticalAlignment = Control.VERTICAL_ALIGNMENT_CENTER;
   text.textWrapping = TextWrapping.WordWrap;
-  text.width = "295px";
+  text.width = 0.75;
   text.top = "50px";
   text.left = "5px";
-  text.text = "Постройте электро цепь в соответствии со схемой";
+  text.text = "Build an electrical circuit according to the diagram and turn on the light";
   text.fontFamily = "Arial";
   text.color = "white";
-  text.fontSize = 20;
+  text.fontSize = 42;
   container.addControl(text);
 
   const parallelButton = addButton("PARALLEL", container, "-40px", "-140px");

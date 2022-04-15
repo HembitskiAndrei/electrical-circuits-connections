@@ -25,13 +25,14 @@ import {
 } from "../utils/constants";
 import { createCuttingButton, createContinueButton } from "../utils/createCheckingButton";
 import { createStartScreen } from "../utils/createStartScreen";
-import { createNumberWiresInfo } from "../utils/createNumberWiresInfo";
+import { createNumberWiresInfo, createDiagramInfo } from "../utils/createNumberWiresInfo";
 import { activateConnectionPoints } from "../utils/activateConnectionPoints";
 import { getCheckingMapKey } from "../utils/getCheckingMapKey";
 import { keyActions } from "../utils/keyActions";
 import { keyAnimation } from "../utils/keyAnimation";
 import { setLampsMaterials } from "../utils/setLampsMaterials";
 import { TLampMaterials } from "../types";
+import { buttonAnimation } from "../utils/buttonAnimation";
 
 export class MainScene extends Scene {
   engine: Engine;
@@ -78,10 +79,9 @@ export class MainScene extends Scene {
     ground.isPickable = true;
 
     const numberWiresInfo = createNumberWiresInfo(this.advancedTexture);
+    const diagramInfo = createDiagramInfo(this.advancedTexture);
 
-    const continueButton = createContinueButton("Continue", "490px", "-50px", this.advancedTexture);
-    continueButton.isVisible = false;
-    continueButton.onPointerDownObservable.add(() => {
+    const resetScene = () => {
       currentNumberConnection = rightConnectionOrder[0].length;
       numberWiresInfo.text = `${currentNumberConnection}`;
       connectionMap.clear();
@@ -107,7 +107,20 @@ export class MainScene extends Scene {
       });
       (devicesMap.get("b1") as ConnectionPoint[])[0].sign = "+";
       (devicesMap.get("b1") as ConnectionPoint[])[1].sign = "-";
+    };
+
+    const backButton = createContinueButton("Back", "-250px", "50px", this.advancedTexture, 0);
+    backButton.onPointerDownObservable.add(() => {
+      resetScene();
     });
+
+    const continueButton = createContinueButton("Continue", "-50px", "-50px", this.advancedTexture);
+    continueButton.isVisible = false;
+    continueButton.onPointerDownObservable.add(() => {
+      resetScene();
+    });
+
+    buttonAnimation(continueButton, 1, 1.1, 100).play(true);
 
     let isCuttingMode = false;
     const cuttingButton = createCuttingButton("", "270px", "-50px", this.advancedTexture);
@@ -156,6 +169,8 @@ export class MainScene extends Scene {
       numberWiresInfo.text = `${currentNumberConnection}`;
       ground.isPickable = true;
       activateConnectionPoints(connectionPoints, true, false, true);
+      diagramInfo.imageSerial.isVisible = true;
+      diagramInfo.imageParallel.isVisible = !diagramInfo.imageSerial.isVisible;
     });
 
     buttons.parallelButton.onPointerUpObservable.add(() => {
@@ -164,6 +179,8 @@ export class MainScene extends Scene {
       numberWiresInfo.text = `${currentNumberConnection}`;
       ground.isPickable = true;
       activateConnectionPoints(connectionPoints, true, false, true);
+      diagramInfo.imageParallel.isVisible = true;
+      diagramInfo.imageSerial.isVisible = !diagramInfo.imageParallel.isVisible;
     });
 
     this.camera = new ArcRotateCamera("Camera", 0, Math.PI / 2, 10, new Vector3(0, 5, 5), this);
@@ -221,7 +238,7 @@ export class MainScene extends Scene {
         new Vector3(keyMesh.rotation.x - Tools.ToRadians(10), 0, 0),
         1000,
       );
-      continueButton.onPointerDownObservable.add(() => {
+      const resetWires = () => {
         if (turnOnOff) {
           setLampsMaterials(false, lampsMaterials);
           turnOnOff = false;
@@ -236,7 +253,14 @@ export class MainScene extends Scene {
         buttons.serialButton.isVisible = true;
         buttons.parallelButton.isVisible = true;
         continueButton.isVisible = false;
+      };
+      backButton.onPointerDownObservable.add(() => {
+        resetWires();
       });
+      continueButton.onPointerDownObservable.add(() => {
+        resetWires();
+      });
+
       cuttingButton.onPointerDownObservable.add(() => {
         if (turnOnOff) {
           setLampsMaterials(false, lampsMaterials);
