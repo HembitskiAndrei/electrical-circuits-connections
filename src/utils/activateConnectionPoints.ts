@@ -25,6 +25,8 @@ export const setWireActions = (point: ConnectionPoint, isWirePickable: boolean) 
           wire.actionManager?.unregisterAction(actionOver as IAction);
           wire.actionManager?.unregisterAction(actionOut as IAction);
           delete point.wires[`${wire.name}`];
+          delete point.connections[`${wire.id}`].connections[`${wire.id}`];
+          delete point.connections[`${wire.id}`];
           wire.dispose();
           point.OnPickDownTriggerWireObservable.notifyObservers({
             wireName: wire.name,

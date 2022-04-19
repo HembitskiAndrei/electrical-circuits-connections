@@ -65,7 +65,7 @@ export class MainScene extends Scene {
     });
     glowLayer.intensity = 2;
 
-    let rightConnectionOrder: string[][];
+    let rightConnectionOrder: string[][] = [[]];
     let currentNumberConnection = 0;
 
     const connectionMap: Set<string> = new Set();
@@ -77,6 +77,15 @@ export class MainScene extends Scene {
     const ground = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, this);
     ground.visibility = 0;
     ground.isPickable = true;
+
+    this.camera = new ArcRotateCamera("Camera", 0, Math.PI / 2, 10, new Vector3(0, 5, 5), this);
+    this.camera.position = new Vector3(0, 6, 10);
+    this.camera.minZ = 0.0;
+    this.camera.maxZ = 100;
+    this.camera.lowerRadiusLimit = 7;
+    this.camera.upperRadiusLimit = 12;
+    this.camera.wheelDeltaPercentage = 0.01;
+    this.camera.setTarget(Vector3.Zero());
 
     const numberWiresInfo = createNumberWiresInfo(this.advancedTexture);
     const diagramInfo = createDiagramInfo(this.advancedTexture);
@@ -96,6 +105,7 @@ export class MainScene extends Scene {
           delete point.wires[`${wire.name}`];
           wire.dispose();
         });
+        point.connections = {};
 
         point.sign = "";
         const typeWords = point.type.split("_");
@@ -112,12 +122,14 @@ export class MainScene extends Scene {
     const backButton = createContinueButton("Back", "-250px", "50px", this.advancedTexture, 0);
     backButton.onPointerDownObservable.add(() => {
       resetScene();
+      this.camera.detachControl();
     });
 
     const continueButton = createContinueButton("Continue", "-50px", "-50px", this.advancedTexture);
     continueButton.isVisible = false;
     continueButton.onPointerDownObservable.add(() => {
       resetScene();
+      this.camera.detachControl();
     });
 
     buttonAnimation(continueButton, 1, 1.1, 100).play(true);
@@ -171,6 +183,7 @@ export class MainScene extends Scene {
       activateConnectionPoints(connectionPoints, true, false, true);
       diagramInfo.imageSerial.isVisible = true;
       diagramInfo.imageParallel.isVisible = !diagramInfo.imageSerial.isVisible;
+      this.camera.attachControl();
     });
 
     buttons.parallelButton.onPointerUpObservable.add(() => {
@@ -181,17 +194,8 @@ export class MainScene extends Scene {
       activateConnectionPoints(connectionPoints, true, false, true);
       diagramInfo.imageParallel.isVisible = true;
       diagramInfo.imageSerial.isVisible = !diagramInfo.imageParallel.isVisible;
+      this.camera.attachControl();
     });
-
-    this.camera = new ArcRotateCamera("Camera", 0, Math.PI / 2, 10, new Vector3(0, 5, 5), this);
-    this.camera.position = new Vector3(0, 6, 10);
-    this.camera.minZ = 0.0;
-    this.camera.maxZ = 100;
-    this.camera.lowerRadiusLimit = 7;
-    this.camera.upperRadiusLimit = 12;
-    this.camera.wheelDeltaPercentage = 0.01;
-    this.camera.setTarget(Vector3.Zero());
-    this.camera.attachControl();
 
     createEnvironment(this);
 
@@ -297,6 +301,7 @@ export class MainScene extends Scene {
 
               const l1Device = devicesMap.get("l1") as ConnectionPoint[];
               const l2Device = devicesMap.get("l2") as ConnectionPoint[];
+              console.log("!!!!!", devicesMap, connectorMap);
               if (
                 numberCorrectWires.indexOf(rightConnectionOrder[0].length) !== -1 &&
                 l1Device[0].sign !== l1Device[1].sign &&
@@ -419,12 +424,34 @@ export class MainScene extends Scene {
 
           const tmpTypeConnectionPoint = point.connectionPoint.type.split("_");
           const tmpTypeConnector = point.type.split("_");
-          if (
-            (tmpTypeConnectionPoint[0].includes("k") && tmpTypeConnector[0].includes("b")) ||
-            (tmpTypeConnectionPoint[0].includes("b") && tmpTypeConnector[0].includes("k"))
-          ) {
-            (devicesMap.get(tmpTypeConnectionPoint[0]) as ConnectionPoint[])[0].sign = point.sign;
-            (devicesMap.get(tmpTypeConnectionPoint[0]) as ConnectionPoint[])[1].sign = point.sign;
+          if (tmpTypeConnectionPoint[0].includes("k") && tmpTypeConnector[0].includes("b")) {
+            const firstConnector = (devicesMap.get(tmpTypeConnectionPoint[0]) as ConnectionPoint[])[0];
+            const secondConnector = (devicesMap.get(tmpTypeConnectionPoint[0]) as ConnectionPoint[])[1];
+            firstConnector.sign = point.sign;
+            secondConnector.sign = point.sign;
+            if (tmpTypeConnectionPoint[1] === "0") {
+              Object.values(secondConnector.connections).forEach(connection => {
+                connection.sign = secondConnector.sign;
+              });
+            } else {
+              Object.values(firstConnector.connections).forEach(connection => {
+                connection.sign = firstConnector.sign;
+              });
+            }
+          } else if (tmpTypeConnectionPoint[0].includes("b") && tmpTypeConnector[0].includes("k")) {
+            const firstConnector = (devicesMap.get(tmpTypeConnector[0]) as ConnectionPoint[])[0];
+            const secondConnector = (devicesMap.get(tmpTypeConnector[0]) as ConnectionPoint[])[1];
+            firstConnector.sign = point.connectionPoint.sign;
+            secondConnector.sign = point.connectionPoint.sign;
+            if (tmpTypeConnector[1] === "0") {
+              Object.values(secondConnector.connections).forEach(connection => {
+                connection.sign = secondConnector.sign;
+              });
+            } else {
+              Object.values(firstConnector.connections).forEach(connection => {
+                connection.sign = firstConnector.sign;
+              });
+            }
           } else if (
             tmpTypeConnectionPoint[0].includes("l") &&
             (tmpTypeConnector[0].includes("k") || tmpTypeConnector[0].includes("b"))
@@ -474,6 +501,9 @@ export class MainScene extends Scene {
     });
 
     this.assetsManager.onFinish = () => {
+      resetScene();
+      ground.isPickable = false;
+      activateConnectionPoints(connectionPoints, false, false, false);
       this.executeWhenReady(() => {
         cuttingButton.isVisible = true;
       });

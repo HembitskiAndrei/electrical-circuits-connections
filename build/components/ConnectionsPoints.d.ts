@@ -20,6 +20,9 @@ export declare class ConnectionPoint {
     wires: {
         [key: string]: Mesh;
     };
+    connections: {
+        [key: string]: ConnectionPoint;
+    };
     isActive: boolean;
     OnPickDownTriggerStartPointObservable: Observable<null>;
     OnPickUpTriggerWirePointObservable: Observable<null>;

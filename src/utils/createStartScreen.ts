@@ -83,7 +83,8 @@ export const createStartScreen = (advancedTexture: AdvancedDynamicTexture) => {
   text.width = 0.75;
   text.top = "50px";
   text.left = "5px";
-  text.text = "Build an electrical circuit according to the diagram and turn on the light";
+  text.text =
+    "Build an electrical circuit according to the diagram and turn on the light.\nHold the left mouse button on the orange ball\nand drag the wire to another ball.\nDrop the left mouse button. At the end click the switch.";
   text.fontFamily = "Arial";
   text.color = "white";
   text.fontSize = 42;

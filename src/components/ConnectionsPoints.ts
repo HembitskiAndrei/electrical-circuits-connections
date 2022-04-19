@@ -28,6 +28,9 @@ export class ConnectionPoint {
   wires: {
     [key: string]: Mesh;
   };
+  connections: {
+    [key: string]: ConnectionPoint;
+  };
   isActive: boolean;
   OnPickDownTriggerStartPointObservable: Observable<null>;
   OnPickUpTriggerWirePointObservable: Observable<null>;
@@ -55,6 +58,7 @@ export class ConnectionPoint {
     this.wireName = "";
     this.wireId = "";
     this.wires = {};
+    this.connections = {};
     this.isActive = true;
 
     this.deltaVector = [];
@@ -97,13 +101,15 @@ export class ConnectionPoint {
           if (this.connectionPoint !== null) {
             this.wirePointMesh.position = this.connectionPoint.startPointMesh.getAbsolutePosition();
             this.OnPickUpTriggerWirePointObservable.notifyObservers(null);
-            this.connectionPoint = null;
             this.wirePointMesh.isPickable = false;
             this._updateWire([this.startPointMesh.getAbsolutePosition(), this.wirePointMesh.position]);
             this.currentWire.name = this.wireName;
             this.currentWire.id = this.wireId;
             (this.currentWire?.material as PBRMaterial).albedoColor = new Color3(0, 1, 0);
             this.wires[`${this.currentWire.name}`] = this.currentWire;
+            this.connections[`${this.wireId}`] = this.connectionPoint;
+            this.connectionPoint.connections[`${this.wireId}`] = this;
+            this.connectionPoint = null;
           } else {
             this.wirePointMesh.position = this.startPointMesh.getAbsolutePosition();
             this.currentWire.dispose();
